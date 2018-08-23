@@ -1,0 +1,26 @@
+# comment
+
+str [name] 'Bob';              # variable creation 
+num [age] 27;                  # type [name] value
+
+if [age >= 18], then            # conditionals
+|show ['$name is an adult']
+else, if [age >= 13], then
+|show ['$name is a teenager]
+else
+|show ['$name is a child'];
+end
+
+age << 2;                        # assignment   <<
+name << 'Sam';
+
+num [age_plus_two] age + 2;      # arithmetic: +   -   *   /
+age_plus_two ++ 2;               # in place    ++  --  **  //
+
+num [age_squared] age ^ 2;       # exponent
+
+show ['age = $age'];
+show ['age_plus_two = $age_plus_two'];   # printing
+show ['age_squared = $age_squared'];
+
+
