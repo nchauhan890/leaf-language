@@ -1,0 +1,53 @@
+program           : statement_list
+
+
+statement_list    : statement | statement NEWLINE statement_list
+
+*****
+indented_statement_list : PIPE statement (indented_statement_list)*
+compound_statement:
+*****
+
+
+statement         : (assign_statement | variable_declaration
+                                      | empty
+                                      | if_statement
+                                      | expression
+                                      | function_call)
+
+function_call     : builtin_functions
+builtin_functions : show
+show              :                                    *****************
+
+argument_list     : expression | expression COMMA argument_list
+
+if_statement      : IF ****
+
+var_declaration   : str_declaration | int_declaration
+
+str_declaration   : STR_TYPE LBRACKET variable RBRACKET
+int_declaration   : INT_TYPE LBRACKET variable RBRACKET
+
+assign_statement  : variable ASSIGN expr
+
+expression        : comparison
+comparison        : addition ((EQUAL   | L_EQUAL | LESS
+                                 N_EQUAL | G_EQUAL | GREATER) addition)*
+addition          : multiplication ((ADD | SUB) multiplication)*
+multiplication    : unary ((MUL | DIV | FLOORDIV) unary)*
+unary             : (ADD | SUB) unary | exponent
+exponent          : atom ((POWER) atom)*
+atom              : NUM | STR | variable | paren_expr
+
+paren_expr        : LPAREN expression RPAREN
+variable          : IDENTIFIER
+empty             :
+
+
+
+comparison     <, <=, ==, ... ( lowest precedence)
+additive       +, -
+multiplicative *, /, %
+unary          +, -
+exponentiation **
+atoms          numbers, variables, parenthesized expressions, etc.
