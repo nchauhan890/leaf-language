@@ -2,13 +2,13 @@
 
 import decimal
 
-from tokens import *
-                    
+from leaf_types import *
+
 
 class Lexer:
 
     def __init__(self, source):
-        self.source = source
+        self.source = source + '\n'
         self.pos = 0
         self.current_char = self.source[self.pos]
 
@@ -65,8 +65,15 @@ class Lexer:
         self.advance()    # skip quote '
         while (self.current_char is not None
                and self.current_char in string_characters):
-            result += self.current_char
+            if (self.current_char == '\\'
+                and self.peek(1) == 'n'):
+                result += '\n'
+                self.advance()
+
+            else:
+                result += self.current_char
             self.advance()
+
         if not self.current_char == '\'':
             self.raise_error(self.current_char)
         self.advance()
@@ -76,7 +83,22 @@ class Lexer:
     def newline(self):
         while self.current_char in ('\n', ';'):
             self.advance()
+
         return Token(NEWLINE, '\n')
+
+    def comment(self):
+        while (self.current_char not in ('\n', ';')
+               and self.current_char is not None):
+            self.advance()
+
+    def indent(self):
+        result = ''
+        while self.current_char == '|':
+            result += '|'
+            self.advance()
+            self.skip_whitespace()
+
+        return Token(PIPE, result)
 
     def advance(self):
         self.pos += 1
@@ -93,6 +115,9 @@ class Lexer:
             elif self.current_char in whitespace:
                 self.skip_whitespace()
 
+            elif self.current_char == '#':
+                self.comment()
+
             elif self.current_char in digits:
                 return Token(NUM, self.collect_number())
 
@@ -102,7 +127,7 @@ class Lexer:
             elif self.current_char == '\'':       # strings start with '
                 return Token(STR, self.collect_string())
 
-            
+
 
             elif (self.current_char == '<'   # check assign <<
                   and self.peek(1) == '<'):  # before less than <
@@ -111,8 +136,7 @@ class Lexer:
                 return Token(ASSIGN, '<<')
 
             elif self.current_char == '|':
-                self.advance()
-                return Token(PIPE, '|')
+                return self.indent()
 
             elif self.current_char == ',':
                 self.advance()
@@ -154,9 +178,11 @@ class Lexer:
 
 
 
-            elif self.current_char == '^':
+            elif (self.current_char == '*'
+                  and self.peek(1) == '*'):
                 self.advance()
-                return Token(POWER, '^')
+                self.advance()
+                return Token(POWER, '**')
 
             elif self.current_char == '+':
                 self.advance()
@@ -168,7 +194,7 @@ class Lexer:
 
             elif (self.current_char == '/'
                   and self.peek(1) == '/'):    # floor div
-                self.advance() 
+                self.advance()
                 self.advance()               # check floor div //
                 return Token(FLOORDIV, '//') # before normal /
 

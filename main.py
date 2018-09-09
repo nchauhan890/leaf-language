@@ -6,25 +6,29 @@ import leaf_parser
 import leaf_lexer
 import leaf_interpreter
 
+print()
+
 
 """
 l = leaf_lexer.Lexer('''number << 2
 a << number
 b << 10 * a + 10 * number // 4
 c << a - - b
-''')
+''')"""
+with open('demo.leaf', 'r') as f:
+    text = f.read()
 
+l = leaf_lexer.Lexer(text)
 p = leaf_parser.Parser(l)
 i = leaf_interpreter.Interpreter(p)
 
-print(i.interpret())
-print(i.global_scope)
-
+i.interpret()
+# print(i.GLOBAL_SCOPE)
 
 
 
 #######
-sys.exit()"""
+# sys.exit(0)
 #######
 if __name__ == '__main__':
     result = ''
@@ -41,7 +45,7 @@ if __name__ == '__main__':
         def update_with(orig_dict, new_dict):
             for var, value in new_dict.items():
                 orig_dict[var] = value
-            
+
         try:
             text = input('>>> ')
             if text == 'exit':
@@ -51,7 +55,7 @@ if __name__ == '__main__':
                     if result
                     else text.replace('~~', ''))
             # use as previous action
-            
+
             if not bool(text):
                 continue
 
@@ -60,13 +64,13 @@ if __name__ == '__main__':
             interpreter = leaf_interpreter.Interpreter(parser)
 
             update_with(interpreter.GLOBAL_SCOPE, GLOBAL)
-            
+
             result = interpreter.interpret()
             if result:
                 print(result)
 
             update_with(GLOBAL, interpreter.GLOBAL_SCOPE)
-            
+
 
         except KeyboardInterrupt as e:
             raise
@@ -74,9 +78,15 @@ if __name__ == '__main__':
         except TypeError as e:
             print('TypeError:', e)
 
-        except SyntaxError as e:
-            print('SyntaxError:', e)
+        # except SyntaxError as e:
+        #     print('SyntaxError:', e)
 
-        except Exception as e:
-            print('Exception:', e)
+        except NameError as e:
+            print('NameError:', e)
+
+        except ZeroDivisionError as e:
+            print('ZeroDivisionError', e)
+
+        # except Exception as e:
+        #     print('Exception:', e)
 

@@ -16,8 +16,7 @@ statement         : (assign_statement | variable_declaration
                                       | function_call)
 
 function_call     : builtin_functions
-builtin_functions : show
-show              :                                    *****************
+builtin_functions : show | join
 
 argument_list     : expression | expression COMMA argument_list
 

@@ -1,6 +1,6 @@
 """Parser for Leaf."""
 
-from tokens import *
+from leaf_types import *
 from leaf_ast import *
 
 
@@ -9,21 +9,37 @@ class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
         self.current_token = self.lexer.next_token()
+        self.seen_variables = []  # temporary store of used variable names
+        self.indentation_level = 0
+        self.buffer = []
+
+    def lookahead(self, n=1):
+        while len(self.buffer) < n:
+            self.buffer.append(self.next_token())
+        return self.buffer[n - 1]
+
+    def next_token(self):
+        if self.buffer:
+            return self.buffer.pop(0)
+        else:
+            return self.lexer.next_token()
 
     def consume_token(self, token_type):
         if self.current_token.type == token_type:
             # print('                  old token', self.current_token)
-            self.current_token = self.lexer.next_token()
+            self.current_token = self.next_token()
             # print('                  new token', self.current_token)
         else:
             self.raise_error(token_type=token_type,
                              received=self.current_token.type)
+        # print(self.current_token, end='')
 
     def raise_error(self, token=None, *, token_type=None, received=None):
         # print('CURRENT TOKEN:', self.current_token)
+        # print('indentation_level', self.indentation_level)
         if token:
             raise SyntaxError('Invalid syntax: {} ({})'
-                              .format(repr(token.value), token.type))
+                              .format(str(token.value), token.type))
         elif token_type and received:
             raise SyntaxError('Invalid syntax: expected {}, got {}'
                               .format(token_type, received))
@@ -50,19 +66,21 @@ class Parser:
         return root
 
     def statement(self):
-        if self.current_token.type == IDENTIFIER:
+        if self.current_token.type == IF:
+            node = self.if_statement()
+
+        elif (self.current_token.type == IDENTIFIER
+              and self.lookahead(1).type == ASSIGN):
             node = self.assign_statement()
-
-        elif self.current_token.type in (STR_TYPE, NUM_TYPE):
-            node = self.variable_declaration()
-
-        elif self.current_token.type in (ADD, SUB, LPAREN, NUM, STR):
-            #                   unary ops ^^  ^^        num ^^
-            #                            paren expr ^^    string ^^
-            node = self.expression()
 
         elif self.current_token.type in builtin_functions:
             node = self.builtin_function()
+
+        elif self.current_token.type in object_types:
+            node = self.expression()
+
+        elif self.current_token.type in (LPAREN, ADD, SUB):
+            node = self.expression()
 
         else:
             node = self.empty()
@@ -78,9 +96,6 @@ class Parser:
         return Assign(left_node=left,
                       operator=token,
                       right_node=self.expression())
-
-    def variable_declaration(self):
-        pass   # add var dec
 
     def builtin_function(self):
         token = self.current_token
@@ -105,7 +120,15 @@ class Parser:
 
         self.consume_token(RBRACKET)
 
-        modifiers = self.modifier_list()  # dict
+        modifiers = self.modifiers_flags_list()  # dict with 1 nested list
+        flags = modifiers['flags']
+        del modifiers['flags']
+
+        for flag in flags:
+            if flag not in function.flags:
+                raise SyntaxError('Invalid syntax: unexpected flag {}'
+                                  .format(flag))
+
         for mod_name in modifiers.keys():
             if mod_name not in function.modifiers:
                 raise SyntaxError('Invalid syntax: unexpected modifier {} ({})'
@@ -113,28 +136,35 @@ class Parser:
 
         return FunctionCall(function  = function,
                             args      = args,
-                            modifiers = modifiers)
+                            modifiers = modifiers,
+                            flags     = flags)
 
     def arbitrary_argument_list(self):
         try:
             results = [self.expression()]
         except SyntaxError:  # no expression found, got [
             results = []
+            return results
         while self.current_token.type == COMMA:
             self.consume_token(COMMA)
             results.append(self.expression())
 
         return results
 
-    def modifier_list(self):
-        results = {}
+    def modifiers_flags_list(self):
+        results = {'flags': []}
         while self.current_token.type == TILDE:
             self.consume_token(TILDE)
-            modifier = self.assign_statement()
+            if self.current_token.value in flag_names:
+                results['flags'].append(self.current_token.value)
+                self.consume_token(IDENTIFIER)
 
-            name = modifier.left.value    # Variable.value
-            value = modifier.right.value  # expression()
-            results[name] = value
+            else:
+                modifier = self.assign_statement()
+
+                name = modifier.left.value    # Variable.value
+                value = modifier.right.value  # expression()
+                results[name] = value
 
         return results
 
@@ -143,14 +173,108 @@ class Parser:
 
     def variable(self):
         node = Variable(self.current_token)
+
+        if not self.current_token.value in self.seen_variables:
+            self.seen_variables.append(self.current_token.value)
+
         self.consume_token(IDENTIFIER)
         return node
 
     def if_statement(self):
-        pass
+        token = self.current_token
+        elif_expressions = []
+        elif_blocks = []
+        else_block = None
+        self.consume_token(IF)
+        self.consume_token(LBRACKET)
+
+        expression = self.expression()
+
+        self.consume_token(RBRACKET)
+        self.consume_token(COMMA)
+        self.consume_token(THEN)
+        self.consume_token(NEWLINE)
+
+        block = self.indented_statement_list()
+
+        # print('\n'.join(str(n) for n in block.children))
+        # print(self.current_token.type)
+        # print()
+        if self.current_token.type == ENDIF:
+            self.consume_token(ENDIF)
+
+        else:
+            while self.current_token.type != ENDIF:
+            # check for else, if clauses
+                if self.current_token.type == ELSE:
+                # and else clause (if any)
+                    self.consume_token(ELSE)
+
+                    if self.current_token.type == COMMA:
+                    # continue into else, if
+                        self.consume_token(COMMA)
+                        self.consume_token(IF)
+                        self.consume_token(LBRACKET)
+
+                        elif_expressions.append(self.expression())
+
+                        self.consume_token(RBRACKET)
+                        self.consume_token(COMMA)
+                        self.consume_token(THEN)
+                        self.consume_token(NEWLINE)
+
+                        elif_blocks.append(self.indented_statement_list())
+
+                    else:  # continue into else clause
+                        self.consume_token(NEWLINE)
+                        else_block = self.indented_statement_list()
+                        self.consume_token(ENDIF)
+                        # expect end after else clause
+                        break
+
+                else:
+                    self.raise_error(self.current_token)
+
+        return IfStatement(token       = token,
+                           expression  = expression,
+                           block       = block,
+                           elif_expressions = elif_expressions,
+                           elif_blocks = elif_blocks,
+                           else_block  = else_block)
 
     def indented_statement_list(self):
-        pass
+        self.indentation_level += 1
+
+        # print('indented:', self.indentation_level, end='')
+        node = StatementList()
+        self.consume_pipe()
+        node.children.append(self.statement())
+        self.consume_token(NEWLINE)
+
+        while (self.current_token.type == PIPE
+               and len(self.current_token.value) == self.indentation_level):
+            self.consume_pipe()
+
+            node.children.append(self.statement())
+            self.consume_token(NEWLINE)
+
+        self.indentation_level -= 1
+        if self.indentation_level > 0:
+            self.consume_pipe()
+
+        return node
+
+    def consume_pipe(self):
+        if self.current_token.type == PIPE:
+            if len(self.current_token.value) == self.indentation_level:
+                self.consume_token(PIPE)
+            else:
+                self.raise_error(token_type='|' * self.indentation_level,
+                                 received  =self.current_token.value)
+        else:
+            self.raise_error(token_type='|' * self.indentation_level,
+                             received  =self.current_token.value)
+
 
     def expression(self):
         return self.comparison()
@@ -197,7 +321,13 @@ class Parser:
             return UnaryOperation(operator   = token,
                                   expression = self.unary())
 
-        elif token.type in (NUM, STR, IDENTIFIER, LPAREN):
+        elif token.type == LPAREN:
+            return self.exponent()
+
+        elif token.type in builtin_functions:
+            return self.exponent()
+
+        elif token.type in object_types:
             return self.exponent()
 
         else:
@@ -212,6 +342,7 @@ class Parser:
             node = BinaryOperation(left_node  = node,
                                    operator   = token,
                                    right_node = self.exponent())
+
         return node
 
     def atom(self):
@@ -229,6 +360,19 @@ class Parser:
 
         elif token.type == IDENTIFIER:
             return self.variable()
+
+        elif token.type in builtin_functions:
+
+            return self.builtin_function()
+
+        elif token.type in (TRUE, FALSE):
+            self.consume_token(token.type)
+            return Boolean(token)
+
+        if token.type in (ADD, SUB):
+            self.consume_token(token.type)
+            return UnaryOperation(operator   = token,
+                                  expression = self.atom())
 
         else:
             self.raise_error(token)
