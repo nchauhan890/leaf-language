@@ -1,0 +1,24 @@
+x << [1,2,3,3,4,5,5,6]
+
+function [comma_show] << [value, :others ~end << '\n' ~no_newline], do
+| show[value, :others ~comma_sep ~end << end ~no_newline << no_newline]
+endfunction
+
+# comma_show[1, 2, 3]
+
+function [fact] << [value], do
+
+| if [value < 1.1], then
+| | return [1]
+| else
+| | return [value * fact[value - 1]]
+| endif
+
+endfunction
+
+
+
+range << :'0000000000'
+for [i, _] in [:Indexed[range ~start << 1]], loop
+| show[fact[i]]
+endloop

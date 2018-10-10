@@ -2,8 +2,7 @@
 
 import decimal
 
-from leaf_types import *
-
+from leaf_tokens import *
 
 class Lexer:
 
@@ -11,12 +10,16 @@ class Lexer:
         self.source = source + '\n'
         self.pos = 0
         self.current_char = self.source[self.pos]
+        self.previous_text = ''
+        self.line = 1
 
     def raise_error(self, received_val=None):
         if received_val is not None:
-            raise TypeError("Invalid character '{}'".format(received_val))
+            raise TypeError("Invalid character '{}'\nin line {}"
+                            .format(received_val, self.line))
         else:
-            raise TypeError('Invalid character')
+            raise TypeError('Invalid character in line {}'
+                            .format(self.line))
 
     def peek(self, amount=1):
         result = ''
@@ -58,7 +61,10 @@ class Lexer:
             result += self.current_char
             self.advance()
 
-        return reserved_keywords.get(result, Token(IDENTIFIER, result))
+        token = reserved_keywords.get(result,
+                                      Token(IDENTIFIER, result))
+        # previous text includes the identifier name
+        return token
 
     def collect_string(self):
         result = ''
@@ -66,7 +72,12 @@ class Lexer:
         while (self.current_char is not None
                and self.current_char in string_characters):
             if (self.current_char == '\\'
-                and self.peek(1) == 'n'):
+                and self.peek(1) == '\\'):
+                result += '\\'
+                self.advance()
+
+            elif (self.current_char == '\\'
+                  and self.peek(1) == 'n'):
                 result += '\n'
                 self.advance()
 
@@ -75,7 +86,7 @@ class Lexer:
             self.advance()
 
         if not self.current_char == '\'':
-            self.raise_error(self.current_char)
+            self.raise_error(repr(self.current_char))
         self.advance()
 
         return result  # already a string
@@ -90,6 +101,8 @@ class Lexer:
         while (self.current_char not in ('\n', ';')
                and self.current_char is not None):
             self.advance()
+        if self.current_char in ('\n', ';'):
+            self.advance()
 
     def indent(self):
         result = ''
@@ -102,6 +115,11 @@ class Lexer:
 
     def advance(self):
         self.pos += 1
+        if self.current_char == '\n':
+            self.line += 1
+        self.previous_text = (self.previous_text + self.current_char)[-20:]
+        # preserves length of 10 for previous text
+
         if self.pos >= len(self.source):
             self.current_char = None
         else:
@@ -110,22 +128,22 @@ class Lexer:
     def next_token(self):
         while self.current_char is not None:
             if self.current_char in ('\n', ';'):  # check newlines first
-                return self.newline()             # semicolon ; counts
+                token = self.newline()             # semicolon ; counts
                                                   # as newline too
             elif self.current_char in whitespace:
-                self.skip_whitespace()
+                token = self.skip_whitespace()
 
             elif self.current_char == '#':
-                self.comment()
+                token = self.comment()
 
             elif self.current_char in digits:
-                return Token(NUM, self.collect_number())
+                token = Token(NUM, self.collect_number())
 
             elif self.current_char in letters_under:  # can't start
-                return self.identifier()              # with number
+                token = self.identifier()              # with number
 
             elif self.current_char == '\'':       # strings start with '
-                return Token(STR, self.collect_string())
+                token = Token(STR, self.collect_string())
 
 
 
@@ -133,48 +151,62 @@ class Lexer:
                   and self.peek(1) == '<'):  # before less than <
                 self.advance()
                 self.advance()
-                return Token(ASSIGN, '<<')
+                token = Token(ASSIGN, '<<')
+
+            elif (self.current_char == '>'
+                  and self.peek(1) == '>'):   # check >> (range)
+                self.advance()                # before > (greater than)
+                self.advance()
+                token = Token(RANGE, '>>')
 
             elif self.current_char == '|':
-                return self.indent()
+                token = self.indent()
 
             elif self.current_char == ',':
                 self.advance()
-                return Token(COMMA, ',')
+                token = Token(COMMA, ',')
 
             elif self.current_char == '~':
                 self.advance()
-                return Token(TILDE, '~')
+                token = Token(TILDE, '~')
+
+            elif self.current_char == '.':
+                self.advance()
+                token = Token(DOT, '.')
+
+            elif self.current_char == ':':
+                self.advance()
+                token = Token(COLON, ':')
 
 
 
             elif self.current_char == '=':
                 self.advance()
-                return Token(EQUAL, '=')
+                token = Token(EQUAL, '=')
 
             elif self.current_char == '!':
                 self.advance()
-                return Token(N_EQUAL, '!')
+                token = Token(N_EQUAL, '!')
 
             elif (self.current_char == '>'     # check the double
                   and self.peek(1) == '='):    # character >= and <=
                 self.advance()                 # before < and >
                 self.advance()
-                return Token(G_EQUAL, '>=')
+                token = Token(G_EQUAL, '>=')
 
             elif (self.current_char == '<'
                   and self.peek(1) == '='):
                 self.advance()
                 self.advance()
-                return Token(L_EQUAL, '<=')
+                token = Token(L_EQUAL, '<=')
 
             elif self.current_char == '>':
                 self.advance()
-                return Token(GREATER, '>')
+                token = Token(GREATER, '>')
 
             elif self.current_char == '<':
                 self.advance()
-                return Token(LESS, '<')
+                token = Token(LESS, '<')
 
 
 
@@ -182,50 +214,66 @@ class Lexer:
                   and self.peek(1) == '*'):
                 self.advance()
                 self.advance()
-                return Token(POWER, '**')
+                token = Token(POWER, '**')
 
             elif self.current_char == '+':
                 self.advance()
-                return Token(ADD, '+')
+                token = Token(ADD, '+')
 
             elif self.current_char == '-':
                 self.advance()
-                return Token(SUB, '-')
+                token = Token(SUB, '-')
 
             elif (self.current_char == '/'
                   and self.peek(1) == '/'):    # floor div
                 self.advance()
-                self.advance()               # check floor div //
-                return Token(FLOORDIV, '//') # before normal /
+                self.advance()                 # check floor div //
+                token = Token(FLOORDIV, '//')  # before normal /
 
             elif self.current_char == '/':
                 self.advance()
-                return Token(DIV, '/')         # normal div
+                token = Token(DIV, '/')
+                # normal div
 
             elif self.current_char == '*':
                 self.advance()
-                return Token(MUL, '*')
+                token = Token(MUL, '*')
+
+            elif self.current_char == '%':
+                self.advance()
+                token = Token(MOD, '%')
 
 
 
             elif self.current_char == '(':
                 self.advance()
-                return Token(LPAREN, '(')
+                token = Token(LPAREN, '(')
 
             elif self.current_char == ')':
                 self.advance()
-                return Token(RPAREN, ')')
+                token = Token(RPAREN, ')')
 
             elif self.current_char == '[':
                 self.advance()
-                return Token(LBRACKET, '[')
+                token = Token(LBRACKET, '[')
 
             elif self.current_char == ']':
                 self.advance()
-                return Token(RBRACKET, ']')
+                token = Token(RBRACKET, ']')
 
 
             else:
                 self.raise_error(self.current_char)
 
-        return Token(EOF, None)
+            if token is not None:
+                token.lookahead = (self.previous_text.split('\n')[-1]
+                                   + (self.current_char
+                                     if self.current_char is not None
+                                     else '')
+                                   + self.peek(10).split('\n')[0])
+                token.line = self.line
+
+                return token
+
+        token = Token(EOF, '')
+        return token

@@ -1,0 +1,22 @@
+x << [5, 6, 7, 8, 9]
+for [i] in [x], loop
+| show[i]
+endloop
+
+
+
+# str << 'hello world!'
+# for [index, x] in [:Indexed[str
+#                             ~start << 1.0
+#                             ~increment << 1.0]], loop
+# | show['index', index, 'is', x]
+# endloop
+
+
+a << [1, 2, 3, 4, 5]
+b << [1, 2, 3, 4, 6]
+c << [4, 5, 6, 7]
+
+for [i] in [Indexed[a,b,c]], loop
+| show[i]
+endloop

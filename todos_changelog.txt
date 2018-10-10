@@ -1,0 +1,130 @@
+TODOS:
+
+  /   = done
+  o   = listed
+
+  /   add modifier checks
+  /   add flag checks
+  /   add join, str, num functions
+  /   look into user defined functions
+  /   look into required and arbitrary arguments in the same function
+          concluded the format is 'args_list' and optional '~arbitrary'
+          args list; cannot have more named args after arbitrary list
+  /   add built-in 'none' type
+  /   add checks to ensure unpacked arguments are all used up
+  /   make sure Indexed returns all objects and None for gaps
+  /   add 'Parallel' object to iterate objects in parallel
+  /   add 'Series'/'Link'/'Chain' object to iterate over multiple
+          objects in series
+  o   add read-only attributes for builtins that cannot be assigned to
+          such as String.uppercase
+  o   add list slicing
+
+CHANGELOG:
+  +   added while loop syntax: 'while [expr], loop'
+  *   changed function call syntax: right-bracket now goes
+          after flags/modifiers
+  +   added ability to call functions whose return value is used as a
+          modifier value in another function. e.g...
+          >>> show[1, 2, 3 ~sep << join[',', ' ']]
+          1, 2, 3
+  *   changed the way python-written functions are implemented and called
+  *   changed the way function calls are identified
+  +   added the ability to reference builtins like 'show' without
+          necessarily having to call it
+  +   added the global scope which is initialised with builtin functions
+          bound to their default names
+  +   added the ability to assign names to functions and use them with a
+          different name. e.g.
+          >>> print << show
+          >>> print[1, 2]
+          1 2
+  +   added the ability to escape a newline character '\n' that previously
+          was always interpreted as a literal newline character
+  +   added until loop syntax: 'until [expr], loop' - same as while loop
+          but negates expression evaluation
+  *   changed the way fucntion call flags/modifiers are parsed - now
+          any modifier that name that isn't followed by an assign is
+          assumed to be a flag
+  -   removed the global flag names
+  +   function call arguments can now have newlines after each comma
+          between arguments if the line is too long
+  *   if a modifier's value is set to true/false, it is implicitly
+          converted into a flag with the corresponding value
+  +   added a list type
+  +   added a list built-in function that returns a list of all the
+          arguments it was called with
+  +   updated parsing to support attribute access
+  +   built-in function 'show' now returns the string it output
+  +   built-in function 'show' has a flag 'no_return' to avoid
+          returning the value it outputs - including trailing newline,
+          if any
+  +   added new for loop syntax: 'for [i] in [sequence], loop'
+  +   added iterators for builtin types: Strings return their characters,
+          Numbers return their digits (no decimal point) and Lists return
+          their contents
+  +   added iterable unpacking with colon ':' syntax - e.g.
+          >>> x << [5, 6]
+          >>> show[:'hey', 123, :x, :72.1 ~comma_sep]
+          h, e, y, 123, 5, 6, 7, 2, 1
+#
+          ^  ^  ^ unpacked string
+                   ^^^ normal number
+                        ^  ^ unpacked list
+                              ^  ^  ^ unpacked number
+          >>> show[join[:x]]
+          56
+  +   added new 'Indexed' type which returns an iterable of the object
+          that is was constructed with, but when iterated over, returns a
+          list of [index, item]
+  *   for loops now support iterable unpacking such as unpacking the
+          [index, item] of an Indexed object into to variables like the
+          following: 'for [index, x] in [:Indexed['hello']], loop'
+  *   String objects now have 'uppercase' and 'lowercase' methods
+  *   List objects now have an 'add' method
+  +   added multiple assignments with line starting with '::' - in the form:
+          >>> :: x, y, z << 1, 2, 3
+  *   multiple assignment now supports iterable unpacking when giving
+          arguments like so:
+          >>> :: first, second << :[1, 2]
+  *   multiple assignment now support iterable unpacking - syntax
+          ':var' will distribute the values accordingly, with any extra
+          values added sequentially from left to right:
+          >>> :: a, :b, c, :d, :e << 1, 2, 3, 4, 5, 6, 7
+          >>> show[a, b, c, d, e]
+          1 [2, 3] 4 [5, 6] [7]
+                ^        ^ extra values added one by one from left to right
+  *   Indexed function now takes any number of iterables - when iterated
+          over, it returns the index plus the correct item in each list
+  *   Indexed function has a better string representation
+  *   Indexed function now returns none for gaps in a shorter iterable
+          rather than stopping iteration at the shortest length
+  +   added user defined functions with the syntax as follows:
+          function [name] << [arg, :arbitrary ~mod << default ~flag], do
+          | ...body...
+          endfunction
+  *   function namespace now uses global namespace and new variables are
+          added to the global namespace upon exiting the scope
+  *   function's name is now available in the function scope to allow
+          for future recursion
+  *   functions now can return values using either 'return'
+          or 'return [expr]'
+  *   functions now support recursion handling properly
+  +   added 'Parallel' type which iterates over each of its iterables,
+          returning a list of the first item in each, then the second
+          in each, etc.
+  *   Indexed function now only takes 1 argument - to emulate previous
+          behaviour in iteration use the following construct:
+          for [i, x] in [:Indexed[Parallel[x, y, z]]], loop
+          | show[i, :x]
+          endloop
+                 ^^^^ the items returned are in a list on the right
+                      hand side, so unpack it when used
+  *   Indexed function now takes a flag 'unpack' to unpack each item
+          iterated - can be used to emulate behaviour above too
+  +   added 'Chain' type which iterates over each of its iterables
+          in order, linking them together
+  +   added method 'join' of String type - it actually calls the builtin
+          join function with the 'sep' flag as the instance's value (if
+          there is no instance, the values are joined without any
+          separation character)

@@ -29,7 +29,9 @@ int_declaration   : INT_TYPE LBRACKET variable RBRACKET
 
 assign_statement  : variable ASSIGN expr
 
-expression        : comparison
+
+
+expression        : comparison | * expression
 comparison        : addition ((EQUAL   | L_EQUAL | LESS
                                  N_EQUAL | G_EQUAL | GREATER) addition)*
 addition          : multiplication ((ADD | SUB) multiplication)*

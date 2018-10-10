@@ -1,0 +1,29 @@
+x << [1, 2, 3, 4, 5]
+y << 1.1124
+z << 'hello world!'
+
+# for [i] in [Indexed[Parallel[x, y, z ~pad << ' '] ~unpack]], loop
+# | show[:i ~comma_sep]
+# endloop
+
+
+# for [item] in [Chain[x, y, z]], loop
+# | show[item]
+# endloop
+
+for [g] in ['helloworld'], loop
+
+| if [g = 'l'], then
+| | next
+| else, if [g = 'w'], then
+| | break
+| endif
+| show[g, ',' ~sep<<'']
+endloop
+
+# expected output from this loop:
+# 'heo'
+# prints 'h' + 'e'
+# skips 'l' x 2
+# prints 'o'
+# breaks on 'w'

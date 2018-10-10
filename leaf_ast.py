@@ -1,19 +1,3 @@
-"""Classes for AST building."""
-
-__all__ = [
-    'NodeParser',
-
-    'BinaryOperation',
-    'UnaryOperation',
-    'FunctionCall',
-    'Variable',
-    'StatementList',
-    'Assign',
-    'IfStatement',
-    'Empty',
-    ]
-
-
 class BinaryOperation:
     def __init__(self, *, left_node, operator, right_node):
         self.left = left_node
@@ -25,17 +9,44 @@ class BinaryOperation:
 
 class FunctionCall:
     def __init__(self, *,
-                 function,   # Function obj
+                 function_node,   # Function obj
                  args,       # list
                  modifiers,  # dict
                  flags):     # list
-        self.function = function
+        self.function_node = function_node
+
         self.args = args
         self.modifiers = modifiers
         self.flags = flags
 
-    def __str__(self):
-        return self.function.name
+
+class Return:
+    def __init__(self, token, expression):
+        self.token = token
+        self.expression = expression
+
+
+class LoopControl:
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+
+
+class FunctionDefinition:
+    def __init__(self, *,
+                 token,
+                 arg_names = None,
+                 arbitrary = None,
+                 modifiers = None,
+                 flags     = None,
+                 body):
+        self.token = token
+        self.value = token.value
+        self.arg_names = arg_names or []
+        self.arbitrary = arbitrary
+        self.modifiers = modifiers or {}
+        self.flags = flags or []
+        self.body = body
 
 
 class UnaryOperation:
@@ -44,6 +55,13 @@ class UnaryOperation:
         self.op = operator
 
         self.expression = expression
+
+
+class MultipleAssign:
+    def __init__(self, token, variables, arguments):
+        self.token = token
+        self.variables = variables
+        self.arguments = arguments
 
 
 class StatementList:
@@ -58,6 +76,20 @@ class Assign:
 
         self.op = operator
         self.token = operator
+
+
+class IterableUnpacking:
+    def __init__(self, token, expression):
+        self.token = token
+        self.expression = expression
+
+
+class AttributeAccess:
+    def __init__(self, left_node, attribute):
+        self.left = left_node
+        self.attribute = attribute
+        self.name = attribute.value
+        self.value = self.name
 
 
 class Variable:
@@ -83,18 +115,27 @@ class IfStatement:
         self.else_block = else_block
 
 
+class WhileLoop:
+    def __init__(self, *, token, expression, block):
+        self.token = token
+        self.expression = expression
+        self.block = block
+
+
+class UntilLoop(WhileLoop):
+    def __init__(self, *, token, expression, block):
+        super(UntilLoop, self).__init__(token=token,
+                                        expression=expression,
+                                        block=block)
+
+
+class ForLoop:
+    def __init__(self, *, token, parameters, iterable, block):
+        self.token = token
+        self.parameters = parameters
+        self.iterable = iterable
+        self.block = block
+
+
 class Empty:
     pass
-
-
-# Node Pasring
-
-class NodeParser:
-    def parse(self, node):
-        method = 'parse_{}'.format(node.__class__.__name__)
-        parser = getattr(self, method, self.parsing_error)
-        return parser(node)
-
-    def parsing_error(self, node):
-        raise TypeError('Couldn\'t find parse_{} method'
-                        .format(node.__class__.__name__))
